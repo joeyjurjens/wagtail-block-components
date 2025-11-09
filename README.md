@@ -2,6 +2,8 @@
 
 Use Wagtail blocks as reusable components in Django templates.
 
+> **Note:** This is an experimental package built to explore an idea. It works, but it's not battle-tested in production.
+
 ## Installation
 
 ```bash
