@@ -1,3 +1,5 @@
+import re
+
 from django.template import Context, Template, TemplateSyntaxError
 from django.test import TestCase
 
@@ -20,17 +22,6 @@ class AccordionBlockTestCase(WagtailTestUtils, TestCase):
         return template.render(Context(context))
 
     def test_all_syntax_options(self):
-        """
-        Comprehensive test showing all supported syntax variations:
-        - Self-closing blocks with kwargs
-        - Block fields with content
-        - Block fields with variables (shorthand)
-        - Block fields with string literals (shorthand)
-        - Multiple StreamBlock items (ListBlock)
-        - Nested StructBlocks
-        - ChooserBlock fields (page, image, document)
-        """
-        # Get test instances from Wagtail's test fixtures
         image = Image.objects.first()
         document = Document.objects.first()
         page = Page.objects.first()
@@ -107,14 +98,9 @@ class AccordionBlockTestCase(WagtailTestUtils, TestCase):
             },
         )
 
-        # Self-closing accordion (empty)
         self.assertIn('class="accordion"', result)
         self.assertIn('id="accordion-', result)
-
-        # Empty accordion item
         self.assertIn('<h3 class="accordion-title">Empty Item</h3>', result)
-
-        # Full accordion with all variations
         self.assertIn('<h3 class="accordion-title">Question 1</h3>', result)
         self.assertIn('<h3 class="accordion-title">Question 2</h3>', result)
         self.assertIn('<h3 class="accordion-title">Question 3</h3>', result)
@@ -125,6 +111,59 @@ class AccordionBlockTestCase(WagtailTestUtils, TestCase):
         self.assertIn("Inline Struct Heading", result)
         self.assertIn("<p>Inline Struct Content</p>", result)
         self.assertIn("<p>ChooserBlocks work!</p>", result)
+
+        result = re.sub(r"accordion-[a-f0-9]{8}", "ACCORDION_ID", result)
+        expected = """
+            <div class="accordion" id="ACCORDION_ID">
+                <div class="accordion-item" data-parent="ACCORDION_ID">
+                    <h3 class="accordion-title">None</h3>
+                    <div class="accordion-content"></div>
+                </div>
+            </div>
+
+            <div class="accordion-item" data-parent="not-rendered-inside-accordion">
+                <h3 class="accordion-title">Empty Item</h3>
+                <div class="accordion-content"></div>
+            </div>
+
+            <div class="accordion" id="ACCORDION_ID">
+                <div class="accordion-item" data-parent="ACCORDION_ID">
+                    <h3 class="accordion-title">Question 1</h3>
+                    <div class="accordion-content">
+                        <p>Answer 1 part 1</p>
+                        <p>Answer 1 part 2</p>
+                    </div>
+                </div>
+                <div class="accordion-item" data-parent="ACCORDION_ID">
+                    <h3 class="accordion-title">Question 2</h3>
+                    <div class="accordion-content">
+                        <p>Answer 2</p>
+                    </div>
+                </div>
+                <div class="accordion-item" data-parent="ACCORDION_ID">
+                    <h3 class="accordion-title">Question 3</h3>
+                    <div class="accordion-content">
+                        <dl>
+                            <dt>heading</dt>
+                            <dd>Inline Struct Heading</dd>
+                            <dt>content</dt>
+                            <dd><p>Inline Struct Content</p></dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="accordion-item" data-parent="ACCORDION_ID">
+                    <h3 class="accordion-title">Question 4</h3>
+                    <div class="accordion-content">
+                        <img alt="A missing image" height="0" src="/media/not-found" width="0">
+                        <a href="/documents/1/test.pdf">test document</a>
+                        <a href="None">Root</a>
+                        <p>ChooserBlocks work!</p>
+                    </div>
+                </div>
+            </div>
+        """
+
+        self.assertHTMLEqual(result, expected)
 
     def test_non_existent_field(self):
         """Test that using a non-existent field name logs a warning"""
